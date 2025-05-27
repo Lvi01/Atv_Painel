@@ -127,6 +127,10 @@ volatile uint8_t usuariosAtivos = 0;
 // Variável para debounce do botão de reset
 static uint64_t debounce_antes = 0;
 
+// Variáveis para debounce dos botões de entrada e saída
+static uint64_t debounce_entrada = 0;
+static uint64_t debounce_saida = 0;
+
 // -------------------------- Prototipação -------------------------------------
 void taskEntrada(void *params);
 void taskSaida(void *params);
@@ -304,6 +308,13 @@ void gpioIRQHandler(uint gpio, uint32_t events) {
 void taskEntrada(void *params) {
     while (true) {
         if (!gpio_get(BTN_ENTRADA)) {
+            uint64_t agora = to_us_since_boot(get_absolute_time());
+            if ((agora - debounce_entrada) < 200000) { // 200ms debounce
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
+            }
+            debounce_entrada = agora;
+
             if (xSemaphoreTake(semContagem, 0) == pdTRUE) {
                 usuariosAtivos++;
                 atualizarLedRGB();
@@ -311,9 +322,12 @@ void taskEntrada(void *params) {
             } else {
                 beepCurto();
             }
-            vTaskDelay(pdMS_TO_TICKS(500));
+            // Aguarda o botão ser solto para evitar múltiplos disparos
+            while (!gpio_get(BTN_ENTRADA)) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -323,15 +337,25 @@ void taskEntrada(void *params) {
 void taskSaida(void *params) {
     while (true) {
         if (!gpio_get(BTN_SAIDA)) {
+            uint64_t agora = to_us_since_boot(get_absolute_time());
+            if ((agora - debounce_saida) < 200000) { // 200ms debounce
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
+            }
+            debounce_saida = agora;
+
             if (usuariosAtivos > 0) {
                 usuariosAtivos--;
                 xSemaphoreGive(semContagem);
                 atualizarLedRGB();
                 atualizarDisplay();
             }
-            vTaskDelay(pdMS_TO_TICKS(500));
+            // Aguarda o botão ser solto para evitar múltiplos disparos
+            while (!gpio_get(BTN_SAIDA)) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
