@@ -38,12 +38,15 @@ add_executable(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
 
+pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/pio_matrix.pio)
+
 target_link_libraries(${PROJECT_NAME} 
         pico_stdlib 
         hardware_gpio
         hardware_i2c
         hardware_adc
         hardware_pwm
+        hardware_pio
         FreeRTOS-Kernel 
         FreeRTOS-Kernel-Heap4
         )
